@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}이력 · securewebproject{% endblock %}
+{% block content %}
+<h1 class="page-title">History</h1>
+<p class="page-subtitle">크롤링 · 알림 실행 이력 (최신 50건)</p>
+
+<div class="panel">
+  <h2>Crawl Records</h2>
+  <table>
+    <thead><tr><th>ID</th><th>URL</th><th>Title</th><th>Status</th><th>Created</th></tr></thead>
+    <tbody id="crawl-rows"><tr><td colspan="5" class="muted">불러오는 중...</td></tr></tbody>
+  </table>
+</div>
+
+<div class="panel">
+  <h2>Notification Logs</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Channel</th><th>Target</th><th>Status</th><th>Created</th></tr></thead>
+    <tbody id="notif-rows"><tr><td colspan="5" class="muted">불러오는 중...</td></tr></tbody>
+  </table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function pill(status) { return `<span class="pill ${status}">${status}</span>`; }
+function fmt(ts) { return ts ? new Date(ts).toLocaleString('ko-KR') : '-'; }
+function esc(s) { return (s ?? '').toString().replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+
+async function load(url, tbody, cols, render) {
+  const el = document.getElementById(tbody);
+  try {
+    const rows = await fetch(url).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+    if (!rows.length) { el.innerHTML = `<tr><td colspan="${cols}" class="muted">기록 없음</td></tr>`; return; }
+    el.innerHTML = rows.map(render).join('');
+  } catch (err) {
+    el.innerHTML = `<tr><td colspan="${cols}" class="muted">불러오기 실패 (${err.message}) — DB가 실행 중인지 확인하세요</td></tr>`;
+  }
+}
+
+load('/api/history/crawls', 'crawl-rows', 5, r =>
+  `<tr><td>${r.id}</td><td>${esc(r.url)}</td><td>${esc(r.title) || '-'}</td><td>${pill(r.status)}</td><td>${fmt(r.created_at)}</td></tr>`);
+
+load('/api/history/notifications', 'notif-rows', 5, r =>
+  `<tr><td>${r.id}</td><td>${esc(r.channel)}</td><td>${esc(r.target)}</td><td>${pill(r.status)}</td><td>${fmt(r.created_at)}</td></tr>`);
+</script>
+{% endblock %}

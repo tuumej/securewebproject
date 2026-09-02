@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}크롤링 · securewebproject{% endblock %}
+{% block content %}
+<h1 class="page-title">Web Crawling</h1>
+<p class="page-subtitle">URL을 큐에 등록하면 백그라운드 워커가 수집합니다</p>
+
+<div class="panel">
+  <h2>New Crawl Job</h2>
+  <form id="crawl-form">
+    <label for="url">Target URL</label>
+    <input type="url" id="url" name="url" placeholder="https://example.com" required>
+    <button type="submit">크롤링 시작</button>
+  </form>
+  <div class="result-box" id="result">대기 중...</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('crawl-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const url = document.getElementById('url').value;
+  const box = document.getElementById('result');
+  box.textContent = '요청 전송 중...';
+  try {
+    const res = await fetch('/api/crawl', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+    box.textContent = '✔ 큐 등록됨\n' + JSON.stringify(data, null, 2);
+  } catch (err) {
+    box.style.color = 'var(--accent)';
+    box.textContent = '✖ 요청 실패: ' + err.message + '\n(워커/Redis가 실행 중인지 확인하세요)';
+  }
+});
+</script>
+{% endblock %}

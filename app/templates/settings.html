@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}설정 · securewebproject{% endblock %}
+{% block content %}
+<h1 class="page-title">⚙ Settings</h1>
+<p class="page-subtitle">시스템 구성 및 연동 상태</p>
+
+<div class="panel">
+  <h2>알림 (Slack)</h2>
+  <table>
+    <tr>
+      <th>Slack Webhook</th>
+      <td>
+        {% if slack_configured %}
+          <span class="pill sent">CONNECTED</span>
+        {% else %}
+          <span class="pill failed">NOT SET</span>
+          <span class="muted"> — .env의 SLACK_WEBHOOK_URL을 설정하세요</span>
+        {% endif %}
+      </td>
+    </tr>
+    <tr><th>알림 채널</th><td>{{ news_slack_channel }}</td></tr>
+  </table>
+</div>
+
+<div class="panel">
+  <h2>보안뉴스 수집</h2>
+  <table>
+    <tr><th>소스 1</th><td><a href="{{ news_dailysecu_url }}" target="_blank" rel="noopener">데일리시큐 — 긴급속보</a></td></tr>
+    <tr><th>소스 2</th><td><a href="{{ news_boannews_url }}" target="_blank" rel="noopener">보안뉴스 — 사건·사고</a></td></tr>
+    <tr><th>소스 3</th><td><a href="https://knvd.krcert.or.kr/info/vuln/notice" target="_blank" rel="noopener">KCERT(KNVD) — 보안공지</a></td></tr>
+    <tr><th>수집 주기</th><td>1시간 (Celery Beat)</td></tr>
+  </table>
+  <button id="refresh-btn" style="margin-top:16px;">지금 수동 갱신</button>
+  <div class="result-box" id="result" style="margin-top:14px;">대기 중...</div>
+</div>
+
+<div class="panel">
+  <h2>테스트</h2>
+  <p class="muted">알림 전송을 직접 테스트하려면 <a href="/notify">알림 전송 페이지</a>를 사용하세요.</p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('refresh-btn').addEventListener('click', async (e) => {
+  e.target.disabled = true;
+  const box = document.getElementById('result');
+  box.textContent = '긴급속보 갱신 중...';
+  try {
+    const r = await fetch('/api/security-news/refresh', { method: 'POST' }).then(r => r.json());
+    box.textContent = '✔ 갱신 완료 — 신규 ' + r.new_count + '건';
+    if (window.refreshBadge) window.refreshBadge();
+  } catch (err) {
+    box.style.color = 'var(--accent)';
+    box.textContent = '✖ 실패: ' + err.message;
+  } finally {
+    e.target.disabled = false;
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · securewebproject{% endblock %}
+{% block content %}
+<h1 class="page-title">System Dashboard</h1>
+<p class="page-subtitle">Extended Analysis — 크롤링 · 알림 · 이력 통합 관제</p>
+
+<div class="panel" id="today-news-panel" hidden>
+  <h2>🚨 오늘의 보안뉴스 <span class="muted" id="news-count" style="font-size:11px;"></span></h2>
+  <ul class="news-list" id="today-news"></ul>
+</div>
+
+<div class="panel">
+  <h2>Overview</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="label">Crawl Records</div>
+      <div class="value accent" id="stat-crawls">—</div>
+    </div>
+    <div class="card">
+      <div class="label">Notifications</div>
+      <div class="value" id="stat-notifs">—</div>
+    </div>
+    <div class="card">
+      <div class="label">Environment</div>
+      <div class="value green" id="stat-env">—</div>
+    </div>
+    <div class="card">
+      <div class="label">API Status</div>
+      <div class="value green" id="stat-api">—</div>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Modules</h2>
+  <table>
+    <thead><tr><th>기능</th><th>설명</th><th>바로가기</th></tr></thead>
+    <tbody>
+      <tr><td>웹 크롤링</td><td>URL을 큐에 등록해 백그라운드로 수집</td><td><a href="/crawl">→ 열기</a></td></tr>
+      <tr><td>보안뉴스</td><td>데일리시큐 긴급속보 오늘자 기사 (1시간 주기)</td><td><a href="/security-news">→ 열기</a></td></tr>
+      <tr><td>알림 🔔</td><td>신규 긴급속보 알림 + Slack 전송</td><td><a href="/alerts">→ 열기</a></td></tr>
+      <tr><td>이력 관리</td><td>크롤링·알림 실행 기록 조회</td><td><a href="/history">→ 열기</a></td></tr>
+      <tr><td>설정 ⚙</td><td>연동 상태 및 수집 구성</td><td><a href="/settings">→ 열기</a></td></tr>
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function fmtTime(ts) { return ts ? new Date(ts).toLocaleString('ko-KR', {hour:'2-digit', minute:'2-digit'}) : ''; }
+function escHtml(s) { return (s ?? '').toString().replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+
+const SRC_LABEL = { dailysecu: '데일리시큐', boannews: '보안뉴스', kcert: 'KCERT' };
+
+async function loadTodayNews() {
+  const panel = document.getElementById('today-news-panel');
+  const list = document.getElementById('today-news');
+  const cnt = document.getElementById('news-count');
+  try {
+    // 오늘자만, auto_refresh로 비면 즉시 수집. 오늘자가 없으면 패널을 숨긴다.
+    const rows = await fetch('/api/security-news?today_only=true&auto_refresh=true')
+      .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); });
+    if (!rows.length) { panel.hidden = true; return; }        // 오늘자 없음 → 표시 안 함
+    const top = rows.slice(0, 3);                              // 최신 3건만
+    cnt.textContent = `(오늘 ${rows.length}건 · 최신 3건)`;
+    list.innerHTML = top.map(n => `
+      <li>
+        <span class="news-time">${fmtTime(n.published_at)}</span>
+        <span class="news-src">${SRC_LABEL[n.source] || n.source}</span>
+        <a href="${escHtml(n.url)}" target="_blank" rel="noopener">${escHtml(n.title)}</a>
+      </li>`).join('');
+    panel.hidden = false;
+    if (window.refreshBadge) window.refreshBadge();
+  } catch (err) {
+    panel.hidden = true;   // 조회 실패 시에도 대시보드를 어지럽히지 않도록 숨김
+  }
+}
+
+async function loadStats() {
+  try {
+    const h = await fetch('/health').then(r => r.json());
+    document.getElementById('stat-env').textContent = h.environment;
+    document.getElementById('stat-api').textContent = 'OK';
+  } catch { document.getElementById('stat-api').textContent = 'DOWN'; }
+
+  try {
+    const c = await fetch('/api/history/crawls').then(r => r.json());
+    document.getElementById('stat-crawls').textContent = c.length;
+  } catch { document.getElementById('stat-crawls').textContent = 'n/a'; }
+
+  try {
+    const n = await fetch('/api/history/notifications').then(r => r.json());
+    document.getElementById('stat-notifs').textContent = n.length;
+  } catch { document.getElementById('stat-notifs').textContent = 'n/a'; }
+}
+loadTodayNews();
+loadStats();
+</script>
+{% endblock %}

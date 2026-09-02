@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}알림 · securewebproject{% endblock %}
+{% block content %}
+<h1 class="page-title">Notifications</h1>
+<p class="page-subtitle">채널을 지정해 알림 전송 작업을 큐에 등록합니다</p>
+
+<div class="panel">
+  <h2>Send Notification</h2>
+  <form id="notify-form">
+    <label for="channel">Channel</label>
+    <select id="channel" name="channel">
+      <option value="email">email</option>
+      <option value="slack">slack</option>
+    </select>
+
+    <label for="target">Target (수신처)</label>
+    <input type="text" id="target" name="target" placeholder="user@example.com / #channel" required>
+
+    <label for="message">Message</label>
+    <textarea id="message" name="message" rows="4" placeholder="보낼 내용" required></textarea>
+
+    <button type="submit">알림 전송</button>
+  </form>
+  <div class="result-box" id="result">대기 중...</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('notify-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    channel: document.getElementById('channel').value,
+    target: document.getElementById('target').value,
+    message: document.getElementById('message').value,
+  };
+  const box = document.getElementById('result');
+  box.textContent = '요청 전송 중...';
+  try {
+    const res = await fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    box.textContent = '✔ 큐 등록됨\n' + JSON.stringify(data, null, 2);
+  } catch (err) {
+    box.style.color = 'var(--accent)';
+    box.textContent = '✖ 요청 실패: ' + err.message + '\n(워커/Redis가 실행 중인지 확인하세요)';
+  }
+});
+</script>
+{% endblock %}

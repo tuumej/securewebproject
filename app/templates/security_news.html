@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}보안뉴스 · securewebproject{% endblock %}
+{% block content %}
+<h1 class="page-title">Security News</h1>
+<p class="page-subtitle">데일리시큐 긴급속보 · 보안뉴스 사건·사고 · KCERT 보안공지 — 오늘자 기사 (1시간 주기 자동 갱신)</p>
+
+<div class="panel">
+  <h2>
+    보안 기사 (오늘)
+    <button id="refresh-btn" class="btn-inline">지금 갱신</button>
+  </h2>
+  <div class="news-filters" id="news-filters">
+    <button class="btn-inline active" data-src="all">전체</button>
+    <button class="btn-inline" data-src="dailysecu">데일리시큐</button>
+    <button class="btn-inline" data-src="boannews">보안뉴스</button>
+    <button class="btn-inline" data-src="kcert">KCERT</button>
+  </div>
+  <div id="status" class="muted" style="margin:10px 0;">불러오는 중...</div>
+  <ul class="news-list" id="news-list"></ul>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const SRC_LABEL = { dailysecu: '데일리시큐', boannews: '보안뉴스', kcert: 'KCERT' };
+let allRows = [];
+let activeSrc = 'all';
+
+function fmt(ts) { return ts ? new Date(ts).toLocaleString('ko-KR', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }
+function esc(s) { return (s ?? '').toString().replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+function isTodayTs(ts) {
+  if (!ts) return false;
+  const d = new Date(ts), n = new Date();
+  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+}
+
+function render() {
+  const list = document.getElementById('news-list');
+  const status = document.getElementById('status');
+  const rows = activeSrc === 'all' ? allRows : allRows.filter(n => n.source === activeSrc);
+  if (!allRows.length) { list.innerHTML = ''; status.textContent = '표시할 기사가 없습니다.'; return; }
+  const hasToday = allRows.some(n => isTodayTs(n.published_at));
+  const note = hasToday ? '오늘자' : '오늘자 기사 없음 — 최신';
+  status.textContent = `${note} · 표시 ${rows.length}건 / 전체 ${allRows.length}건`;
+  list.innerHTML = rows.map(n => `
+    <li>
+      <span class="news-time">${fmt(n.published_at)}</span>
+      <span class="news-src src-${esc(n.source)}">${SRC_LABEL[n.source] || esc(n.source)}</span>
+      <a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a>
+    </li>`).join('');
+}
+
+async function loadNews() {
+  try {
+    // auto_refresh: 비면 즉시 수집 · fallback_recent: 오늘자 없으면 최신으로 대체
+    allRows = await fetch('/api/security-news?today_only=true&auto_refresh=true&fallback_recent=true')
+      .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); });
+    render();
+  } catch (err) {
+    document.getElementById('status').textContent = '불러오기 실패 (' + err.message + ') — DB가 실행 중인지 확인하세요';
+  }
+}
+
+document.getElementById('news-filters').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-src]');
+  if (!btn) return;
+  activeSrc = btn.dataset.src;
+  document.querySelectorAll('#news-filters button').forEach(b => b.classList.toggle('active', b === btn));
+  render();
+});
+
+document.getElementById('refresh-btn').addEventListener('click', async (e) => {
+  e.target.disabled = true; e.target.textContent = '갱신 중...';
+  try {
+    const r = await fetch('/api/security-news/refresh', { method: 'POST' }).then(r => r.json());
+    document.getElementById('status').textContent = `갱신 완료 — 신규 ${r.new_count}건`;
+    await loadNews();
+    if (window.refreshBadge) window.refreshBadge();
+  } catch (err) {
+    document.getElementById('status').textContent = '갱신 실패: ' + err.message;
+  } finally {
+    e.target.disabled = false; e.target.textContent = '지금 갱신';
+  }
+});
+
+loadNews();
+</script>
+{% endblock %}

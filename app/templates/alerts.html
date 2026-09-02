@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}알림 · securewebproject{% endblock %}
+{% block content %}
+<h1 class="page-title">🔔 Alerts</h1>
+<p class="page-subtitle">긴급속보 기반 알림 — 신규 기사 발생 시 Slack으로도 전송됩니다</p>
+
+<div class="panel">
+  <h2>
+    최근 알림
+    <button id="read-btn" class="btn-inline">모두 읽음</button>
+  </h2>
+  <div id="status" class="muted" style="margin-bottom:10px;">불러오는 중...</div>
+  <ul class="news-list" id="alert-list"></ul>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function fmt(ts) { return ts ? new Date(ts).toLocaleString('ko-KR') : ''; }
+function esc(s) { return (s ?? '').toString().replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+
+async function loadAlerts() {
+  const list = document.getElementById('alert-list');
+  const status = document.getElementById('status');
+  try {
+    const rows = await fetch('/api/alerts').then(r => { if(!r.ok) throw new Error(r.status); return r.json(); });
+    if (!rows.length) { list.innerHTML = ''; status.textContent = '알림이 없습니다.'; return; }
+    const unread = rows.filter(r => !r.is_read).length;
+    status.textContent = `총 ${rows.length}건 · 미확인 ${unread}건`;
+    list.innerHTML = rows.map(n => `
+      <li class="${n.is_read ? '' : 'unread'}">
+        <span class="news-time">${fmt(n.published_at || n.created_at)}</span>
+        <a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a>
+        ${n.is_read ? '' : '<span class="pill pending">NEW</span>'}
+      </li>`).join('');
+  } catch (err) {
+    status.textContent = '불러오기 실패 (' + err.message + ') — DB가 실행 중인지 확인하세요';
+  }
+}
+
+document.getElementById('read-btn').addEventListener('click', async () => {
+  try {
+    await fetch('/api/alerts/read', { method: 'POST' });
+    await loadAlerts();
+    if (window.refreshBadge) window.refreshBadge();
+  } catch { /* ignore */ }
+});
+
+loadAlerts();
+</script>
+{% endblock %}

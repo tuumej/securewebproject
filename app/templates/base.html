@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}securewebproject{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+</head>
+<body>
+  <header class="navbar">
+    <span class="brand">securewebproject</span>
+    <nav>
+      <a href="/"              class="{{ 'active' if active == 'dashboard' else '' }}">Dashboard</a>
+      <a href="/crawl"         class="{{ 'active' if active == 'crawl' else '' }}">크롤링</a>
+      <a href="/security-news" class="{{ 'active' if active == 'security-news' else '' }}">보안뉴스</a>
+      <a href="/history"       class="{{ 'active' if active == 'history' else '' }}">이력</a>
+      <a href="/alerts" class="bell {{ 'active' if active == 'alerts' else '' }}" title="알림">
+        <span class="bell-icon">🔔</span>
+        <span class="badge" id="nav-badge" hidden>0</span>
+      </a>
+      <a href="/settings" class="gear {{ 'active' if active == 'settings' else '' }}" title="설정">⚙</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    // 종 배지: 미확인 알림 수를 모든 페이지에서 갱신
+    async function refreshBadge() {
+      try {
+        const { count } = await fetch('/api/alerts/unread-count').then(r => r.json());
+        const b = document.getElementById('nav-badge');
+        if (count > 0) { b.textContent = count > 99 ? '99+' : count; b.hidden = false; }
+        else { b.hidden = true; }
+      } catch { /* API/DB 미가동 시 무시 */ }
+    }
+    refreshBadge();
+    window.refreshBadge = refreshBadge;
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
