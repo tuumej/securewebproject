@@ -6,7 +6,7 @@
   <title>{% block title %}securewebproject{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}?v=3">
 </head>
 <body>
   <header class="navbar">
@@ -17,11 +17,23 @@
       <a href="/security-news" class="{{ 'active' if active == 'security-news' else '' }}">보안뉴스</a>
       <a href="/history"       class="{{ 'active' if active == 'history' else '' }}">이력</a>
       <a href="/diagnosis"     class="{{ 'active' if active == 'diagnosis' else '' }}">진단</a>
+      {% if current_user %}
+        <span class="nav-login-btn" style="cursor:default;" title="{{ current_user }}">{{ current_user }}</span>
+        <form method="post" action="/logout" style="margin:0; padding:0; display:inline;">
+          <button type="submit" class="nav-logout-btn" title="로그아웃">로그아웃</button>
+        </form>
+      {% else %}
+        <a href="/login" class="nav-login-btn {{ 'active' if active == 'login' else '' }}">로그인</a>
+      {% endif %}
       <a href="/alerts" class="bell {{ 'active' if active == 'alerts' else '' }}" title="알림">
         <span class="bell-icon">🔔</span>
         <span class="badge" id="nav-badge" hidden>0</span>
       </a>
-      <a href="/settings" class="gear {{ 'active' if active == 'settings' else '' }}" title="설정">⚙</a>
+      {% if current_user %}
+        <a href="/settings" class="gear {{ 'active' if active == 'settings' else '' }}" title="설정">⚙</a>
+      {% else %}
+        <span class="gear gear-locked" title="설정 (로그인 필요)">⚙</span>
+      {% endif %}
     </nav>
   </header>
 

@@ -4,80 +4,155 @@
 <h1 class="page-title">⚙ Settings</h1>
 <p class="page-subtitle">시스템 구성 및 연동 상태</p>
 
-<!-- ── 알림 대상 관리 ────────────────────────────────── -->
-<div class="panel">
-  <h2>알림 대상 관리</h2>
+<!-- 탭 네비게이션 -->
+<div class="settings-tab-bar">
+  <button class="stab active" data-tab="notifications">알림 대상</button>
+  <button class="stab" data-tab="news">보안뉴스 수집</button>
+  <button class="stab" data-tab="users">사용자 관리</button>
+  <button class="stab" data-tab="session">세션 설정</button>
+</div>
 
-  <!-- 등록된 대상 목록 -->
-  <table id="noti-table" style="width:100%; margin-bottom:16px;">
-    <thead>
-      <tr>
-        <th style="width:100px;">타입</th>
-        <th>이름</th>
-        <th style="width:100px;">상태</th>
-        <th style="width:220px;">작업</th>
-      </tr>
-    </thead>
-    <tbody id="noti-tbody">
-      <tr id="noti-empty-row"><td colspan="4" class="muted" style="text-align:center; padding:16px;">등록된 알림 대상이 없습니다.</td></tr>
-    </tbody>
-  </table>
-
-  <!-- 새 대상 추가 폼 -->
-  <div style="border-top:1px solid var(--border); padding-top:16px; margin-top:4px;">
-    <strong style="font-size:13px;">새 알림 대상 추가</strong>
-    <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; align-items:flex-start;">
-      <select id="add-type" style="padding:8px 10px; font-size:13px; background:var(--bg-input); color:var(--text); border:1px solid var(--border); border-radius:6px; width:130px;">
-        <option value="telegram">Telegram</option>
-        <option value="slack">Slack</option>
-      </select>
-      <input type="text" id="add-name" placeholder="이름 (예: 개인채널)" style="padding:8px 10px; font-size:13px; width:160px;">
-      <!-- Telegram 입력 -->
-      <div id="add-telegram-fields" style="display:flex; gap:8px; flex-wrap:wrap;">
-        <input type="password" id="add-tg-token" placeholder="Bot Token" autocomplete="off" style="padding:8px 10px; font-size:13px; width:230px;">
-        <input type="text" id="add-tg-chat" placeholder="Chat ID" style="padding:8px 10px; font-size:13px; width:150px;">
+<!-- ── 탭 1: 알림 대상 ──────────────────────────────── -->
+<div class="stab-panel" id="stab-notifications">
+  <div class="panel">
+    <h2>알림 대상 관리</h2>
+    <table id="noti-table" style="width:100%; margin-bottom:16px;">
+      <thead>
+        <tr>
+          <th style="width:100px;">타입</th>
+          <th>이름</th>
+          <th style="width:100px;">상태</th>
+          <th style="width:220px;">작업</th>
+        </tr>
+      </thead>
+      <tbody id="noti-tbody">
+        <tr id="noti-empty-row"><td colspan="4" class="muted" style="text-align:center; padding:16px;">등록된 알림 대상이 없습니다.</td></tr>
+      </tbody>
+    </table>
+    <div style="border-top:1px solid var(--border); padding-top:16px;">
+      <strong style="font-size:13px;">새 알림 대상 추가</strong>
+      <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; align-items:flex-start;">
+        <select id="add-type" style="padding:8px 10px; font-size:13px; background:var(--bg-input); color:var(--text); border:1px solid var(--border); border-radius:6px; width:130px;">
+          <option value="telegram">Telegram</option>
+          <option value="slack">Slack</option>
+        </select>
+        <input type="text" id="add-name" placeholder="이름 (예: 개인채널)" style="padding:8px 10px; font-size:13px; width:160px;">
+        <div id="add-telegram-fields" style="display:flex; gap:8px; flex-wrap:wrap;">
+          <input type="password" id="add-tg-token" placeholder="Bot Token" autocomplete="off" style="padding:8px 10px; font-size:13px; width:230px;">
+          <input type="text" id="add-tg-chat" placeholder="Chat ID" style="padding:8px 10px; font-size:13px; width:150px;">
+        </div>
+        <div id="add-slack-fields" style="display:none; flex-wrap:wrap;">
+          <input type="text" id="add-slack-url" placeholder="Webhook URL" style="padding:8px 10px; font-size:13px; width:380px;">
+        </div>
+        <button id="add-btn" style="padding:9px 20px; font-size:13px; margin:0;">추가</button>
       </div>
-      <!-- Slack 입력 -->
-      <div id="add-slack-fields" style="display:none; flex-wrap:wrap;">
-        <input type="text" id="add-slack-url" placeholder="Webhook URL (https://hooks.slack.com/...)" style="padding:8px 10px; font-size:13px; width:380px;">
-      </div>
-      <button id="add-btn" style="padding:9px 20px; font-size:13px; margin:0;">추가</button>
+      <div id="add-result" class="muted" style="font-size:12px; margin-top:8px;"></div>
+      <p class="muted" style="margin-top:8px; font-size:12px;">
+        Telegram: <a href="https://t.me/BotFather" target="_blank">@BotFather</a>에서 Bot Token 발급 ·
+        <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a>에서 Chat ID 확인
+      </p>
     </div>
-    <div id="add-result" class="muted" style="font-size:12px; margin-top:8px;"></div>
-    <p class="muted" style="margin-top:8px; font-size:12px;">
-      Telegram: <a href="https://t.me/BotFather" target="_blank">@BotFather</a>에서 Bot Token 발급 ·
-      <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a>에서 Chat ID 확인
-    </p>
   </div>
 </div>
 
-<!-- ── 보안뉴스 수집 ──────────────────────────────────── -->
-<div class="panel">
-  <h2>보안뉴스 수집</h2>
-  <table>
-    <tr><th>소스 1</th><td><a href="{{ news_dailysecu_url }}" target="_blank" rel="noopener">데일리시큐 — 긴급속보</a></td></tr>
-    <tr><th>소스 2</th><td><a href="{{ news_boannews_url }}" target="_blank" rel="noopener">보안뉴스 — 사건·사고</a></td></tr>
-    <tr><th>소스 3</th><td><a href="https://knvd.krcert.or.kr/info/vuln/notice" target="_blank" rel="noopener">KCERT(KNVD) — 보안공지</a></td></tr>
-    <tr><th>수집 주기</th><td>1시간 (Celery Beat)</td></tr>
-  </table>
-  <button id="refresh-btn" style="margin-top:16px;">지금 수동 갱신</button>
-  <div class="result-box" id="result" style="margin-top:14px;">대기 중...</div>
+<!-- ── 탭 2: 보안뉴스 수집 ───────────────────────────── -->
+<div class="stab-panel" id="stab-news" hidden>
+  <div class="panel">
+    <h2>보안뉴스 수집</h2>
+    <table>
+      <tr><th>소스 1</th><td><a href="{{ news_dailysecu_url }}" target="_blank" rel="noopener">데일리시큐 — 긴급속보</a></td></tr>
+      <tr><th>소스 2</th><td><a href="{{ news_boannews_url }}" target="_blank" rel="noopener">보안뉴스 — 사건·사고</a></td></tr>
+      <tr><th>소스 3</th><td><a href="https://knvd.krcert.or.kr/info/vuln/notice" target="_blank" rel="noopener">KCERT(KNVD) — 보안공지</a></td></tr>
+      <tr><th>수집 주기</th><td>1시간 (Celery Beat)</td></tr>
+    </table>
+    <button id="refresh-btn" style="margin-top:16px;">지금 수동 갱신</button>
+    <div class="result-box" id="refresh-result" style="margin-top:14px;">대기 중...</div>
+  </div>
 </div>
 
-<div class="panel">
-  <h2>테스트</h2>
-  <p class="muted">알림 전송을 직접 테스트하려면 <a href="/notify">알림 전송 페이지</a>를 사용하세요.</p>
+<!-- ── 탭 3: 사용자 관리 ─────────────────────────────── -->
+<div class="stab-panel" id="stab-users" hidden>
+  <div class="panel">
+    <h2>사용자 관리</h2>
+    <table id="user-table" style="width:100%; margin-bottom:16px;">
+      <thead>
+        <tr>
+          <th style="width:130px;">ID</th>
+          <th style="width:140px;">사용자명</th>
+          <th>비고</th>
+          <th style="width:150px;">등록일</th>
+          <th style="width:80px;">삭제</th>
+        </tr>
+      </thead>
+      <tbody id="user-tbody">
+        <tr><td colspan="5" class="muted" style="text-align:center; padding:16px;">불러오는 중...</td></tr>
+      </tbody>
+    </table>
+
+    <div style="border-top:1px solid var(--border); padding-top:16px;">
+      <strong style="font-size:13px;">새 계정 추가</strong>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; max-width:620px;">
+        <div>
+          <label style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:4px;">ID <span style="color:var(--accent);">*</span></label>
+          <input type="text" id="new-username" placeholder="로그인에 사용할 ID" style="width:100%; padding:9px 11px; font-size:13px; box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:4px;">사용자명 <span style="color:var(--accent);">*</span></label>
+          <input type="text" id="new-displayname" placeholder="표시 이름" style="width:100%; padding:9px 11px; font-size:13px; box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:4px;">비밀번호 <span style="color:var(--accent);">*</span></label>
+          <input type="password" id="new-password" placeholder="••••••••" autocomplete="new-password" style="width:100%; padding:9px 11px; font-size:13px; box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:4px;">비고</label>
+          <input type="text" id="new-note" placeholder="선택사항" style="width:100%; padding:9px 11px; font-size:13px; box-sizing:border-box;">
+        </div>
+      </div>
+      <button id="add-user-btn" style="margin-top:14px; padding:9px 22px; font-size:13px;">계정 추가</button>
+      <div id="user-add-result" class="muted" style="font-size:12px; margin-top:8px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 탭 4: 세션 설정 ───────────────────────────────── -->
+<div class="stab-panel" id="stab-session" hidden>
+  <div class="panel">
+    <h2>세션 설정</h2>
+    <p class="muted" style="font-size:13px; margin-bottom:16px;">
+      설정한 시간(분) 동안 아무 활동이 없으면 자동으로 로그아웃됩니다.
+    </p>
+    <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+      <label style="font-size:13px;">세션 타임아웃</label>
+      <input type="number" id="session-timeout" min="1" max="1440" value="30"
+             style="width:100px; padding:9px 11px; font-size:13px; text-align:center;">
+      <span class="muted" style="font-size:13px;">분</span>
+      <button id="session-save-btn" style="padding:9px 22px; font-size:13px; margin:0;">저장</button>
+      <span id="session-result" class="muted" style="font-size:12px;"></span>
+    </div>
+    <p class="muted" style="margin-top:12px; font-size:12px;">기본값: 30분 · 최소 1분 · 최대 1440분(24시간)</p>
+  </div>
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
-const TYPE_LABELS = { telegram: 'Telegram', slack: 'Slack' };
+// ── 탭 전환 ──────────────────────────────────────────
+document.querySelectorAll('.stab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.stab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.stab-panel').forEach(p => p.hidden = true);
+    btn.classList.add('active');
+    document.getElementById('stab-' + btn.dataset.tab).hidden = false;
+    if (btn.dataset.tab === 'users') loadUsers();
+    if (btn.dataset.tab === 'session') loadSession();
+  });
+});
 
-function esc(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-function buildRow(t) {
+// ── 알림 대상 ─────────────────────────────────────────
+function buildNotiRow(t) {
   const typeBadge = t.type === 'telegram'
     ? '<span class="pill sent" style="font-size:11px;">Telegram</span>'
     : '<span class="pill" style="font-size:11px; background:var(--bg-panel2);">Slack</span>';
@@ -87,17 +162,14 @@ function buildRow(t) {
   let detail = '';
   if (t.type === 'telegram') detail = `<br><span class="muted" style="font-size:11px;">Chat ID: ${esc(t.chat_id)}</span>`;
   else if (t.type === 'slack') detail = `<br><span class="muted" style="font-size:11px;">${esc(t.webhook_url_masked)}</span>`;
-
   return `<tr data-id="${t.id}">
     <td>${typeBadge}</td>
     <td>${esc(t.name)}${detail}</td>
     <td>${enabledBadge}</td>
     <td style="white-space:nowrap;">
-      <button class="btn-toggle" data-id="${t.id}" data-enabled="${t.enabled}" style="padding:5px 12px; font-size:12px; margin:0 4px 0 0; background:var(--bg-panel2); color:var(--text); border:1px solid var(--border);">
-        ${t.enabled ? '비활성화' : '활성화'}
-      </button>
+      <button class="btn-toggle" data-id="${t.id}" data-enabled="${t.enabled}" style="padding:5px 12px; font-size:12px; margin:0 4px 0 0; background:var(--bg-panel2); color:var(--text); border:1px solid var(--border);">${t.enabled ? '비활성화' : '활성화'}</button>
       <button class="btn-test" data-id="${t.id}" style="padding:5px 12px; font-size:12px; margin:0 4px 0 0; background:var(--bg-panel2); color:var(--text); border:1px solid var(--border);">테스트</button>
-      <button class="btn-delete" data-id="${t.id}" style="padding:5px 12px; font-size:12px; margin:0; background:var(--bg-panel2); color:var(--accent); border:1px solid var(--accent);">삭제</button>
+      <button class="btn-delete-noti" data-id="${t.id}" style="padding:5px 12px; font-size:12px; margin:0; background:var(--bg-panel2); color:var(--accent); border:1px solid var(--accent);">삭제</button>
     </td>
   </tr>`;
 }
@@ -107,57 +179,41 @@ async function loadTargets() {
   try {
     const list = await fetch('/api/settings/notifications').then(r => r.json());
     if (!list.length) {
-      tbody.innerHTML = '<tr id="noti-empty-row"><td colspan="4" class="muted" style="text-align:center; padding:16px;">등록된 알림 대상이 없습니다.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="muted" style="text-align:center; padding:16px;">등록된 알림 대상이 없습니다.</td></tr>';
       return;
     }
-    tbody.innerHTML = list.map(buildRow).join('');
-    tbody.querySelectorAll('.btn-toggle').forEach(btn => btn.addEventListener('click', onToggle));
-    tbody.querySelectorAll('.btn-test').forEach(btn => btn.addEventListener('click', onTest));
-    tbody.querySelectorAll('.btn-delete').forEach(btn => btn.addEventListener('click', onDelete));
+    tbody.innerHTML = list.map(buildNotiRow).join('');
+    tbody.querySelectorAll('.btn-toggle').forEach(b => b.addEventListener('click', onNotiToggle));
+    tbody.querySelectorAll('.btn-test').forEach(b => b.addEventListener('click', onNotiTest));
+    tbody.querySelectorAll('.btn-delete-noti').forEach(b => b.addEventListener('click', onNotiDelete));
   } catch { tbody.innerHTML = '<tr><td colspan="4" class="muted" style="text-align:center;">불러오기 실패</td></tr>'; }
 }
 
-async function onToggle(e) {
-  const btn = e.currentTarget;
-  const id = btn.dataset.id;
-  const nowEnabled = btn.dataset.enabled === 'true';
+async function onNotiToggle(e) {
+  const btn = e.currentTarget; const id = btn.dataset.id; const nowEnabled = btn.dataset.enabled === 'true';
   btn.disabled = true;
-  try {
-    await fetch(`/api/settings/notifications/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: !nowEnabled }),
-    });
-    await loadTargets();
-  } catch { alert('변경 실패'); } finally { btn.disabled = false; }
+  try { await fetch(`/api/settings/notifications/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({enabled: !nowEnabled}) }); await loadTargets(); }
+  catch { alert('변경 실패'); } finally { btn.disabled = false; }
 }
 
-async function onTest(e) {
-  const btn = e.currentTarget;
-  const id = btn.dataset.id;
-  btn.disabled = true;
-  const origText = btn.textContent;
-  btn.textContent = '전송중...';
+async function onNotiTest(e) {
+  const btn = e.currentTarget; const id = btn.dataset.id; btn.disabled = true; const orig = btn.textContent; btn.textContent = '전송중...';
   try {
-    const r = await fetch(`/api/settings/notifications/${id}/test`, { method: 'POST' });
+    const r = await fetch(`/api/settings/notifications/${id}/test`, { method:'POST' });
     if (r.ok) { btn.textContent = '성공!'; btn.style.color = 'var(--green)'; }
-    else { const d = await r.json(); alert('실패: ' + (d.detail || r.status)); btn.textContent = origText; }
-  } catch (err) { alert('오류: ' + err.message); btn.textContent = origText; }
-  finally { setTimeout(() => { btn.disabled = false; btn.textContent = origText; btn.style.color = ''; }, 2500); }
+    else { const d = await r.json(); alert('실패: ' + (d.detail || r.status)); btn.textContent = orig; }
+  } catch (err) { alert('오류: ' + err.message); btn.textContent = orig; }
+  finally { setTimeout(() => { btn.disabled = false; btn.textContent = orig; btn.style.color = ''; }, 2500); }
 }
 
-async function onDelete(e) {
-  const btn = e.currentTarget;
-  const id = btn.dataset.id;
-  if (!confirm('이 알림 대상을 삭제하시겠습니까?')) return;
+async function onNotiDelete(e) {
+  const btn = e.currentTarget; const id = btn.dataset.id;
+  if (!confirm('삭제하시겠습니까?')) return;
   btn.disabled = true;
-  try {
-    await fetch(`/api/settings/notifications/${id}`, { method: 'DELETE' });
-    await loadTargets();
-  } catch { alert('삭제 실패'); btn.disabled = false; }
+  try { await fetch(`/api/settings/notifications/${id}`, { method:'DELETE' }); await loadTargets(); }
+  catch { alert('삭제 실패'); btn.disabled = false; }
 }
 
-// 타입 선택에 따라 입력 필드 전환
 document.getElementById('add-type').addEventListener('change', function() {
   const isTg = this.value === 'telegram';
   document.getElementById('add-telegram-fields').style.display = isTg ? 'flex' : 'none';
@@ -169,7 +225,6 @@ document.getElementById('add-btn').addEventListener('click', async (e) => {
   const name = document.getElementById('add-name').value.trim();
   const result = document.getElementById('add-result');
   if (!name) { result.textContent = '이름을 입력하세요.'; result.style.color = 'var(--accent)'; return; }
-
   let body = { type, name };
   if (type === 'telegram') {
     const token = document.getElementById('add-tg-token').value.trim();
@@ -181,44 +236,102 @@ document.getElementById('add-btn').addEventListener('click', async (e) => {
     if (!url) { result.textContent = 'Webhook URL을 입력하세요.'; result.style.color = 'var(--accent)'; return; }
     body = { ...body, webhook_url: url };
   }
-
-  e.target.disabled = true;
-  result.textContent = '저장 중...'; result.style.color = '';
+  e.target.disabled = true; result.textContent = '저장 중...'; result.style.color = '';
   try {
-    const r = await fetch('/api/settings/notifications', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    const r = await fetch('/api/settings/notifications', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
     if (r.ok) {
       result.textContent = '추가됐습니다.'; result.style.color = 'var(--green)';
-      document.getElementById('add-name').value = '';
-      document.getElementById('add-tg-token').value = '';
-      document.getElementById('add-tg-chat').value = '';
-      document.getElementById('add-slack-url').value = '';
+      ['add-name','add-tg-token','add-tg-chat','add-slack-url'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       await loadTargets();
-    } else {
-      const d = await r.json();
-      result.textContent = '실패: ' + (d.detail || r.status); result.style.color = 'var(--accent)';
-    }
+    } else { const d = await r.json(); result.textContent = '실패: ' + (d.detail || r.status); result.style.color = 'var(--accent)'; }
   } catch (err) { result.textContent = '오류: ' + err.message; result.style.color = 'var(--accent)'; }
   finally { e.target.disabled = false; }
 });
 
+// ── 보안뉴스 수집 ──────────────────────────────────────
 document.getElementById('refresh-btn').addEventListener('click', async (e) => {
   e.target.disabled = true;
-  const box = document.getElementById('result');
-  box.textContent = '긴급속보 갱신 중...';
+  const box = document.getElementById('refresh-result');
+  box.textContent = '갱신 중...'; box.style.color = '';
   try {
-    const r = await fetch('/api/security-news/refresh', { method: 'POST' }).then(r => r.json());
-    box.textContent = '✔ 갱신 완료 — 신규 ' + r.new_count + '건';
+    const r = await fetch('/api/security-news/refresh', { method:'POST' }).then(r => r.json());
+    box.textContent = '완료 — 신규 ' + r.new_count + '건';
     if (window.refreshBadge) window.refreshBadge();
-  } catch (err) {
-    box.style.color = 'var(--accent)';
-    box.textContent = '✖ 실패: ' + err.message;
-  } finally { e.target.disabled = false; }
+  } catch (err) { box.textContent = '실패: ' + err.message; box.style.color = 'var(--accent)'; }
+  finally { e.target.disabled = false; }
 });
 
+// ── 사용자 관리 ────────────────────────────────────────
+async function loadUsers() {
+  const tbody = document.getElementById('user-tbody');
+  try {
+    const list = await fetch('/api/settings/users').then(r => r.json());
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="muted" style="text-align:center; padding:16px;">등록된 계정이 없습니다.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(u => `<tr data-id="${u.id}">
+      <td style="font-family:monospace;">${esc(u.username)}</td>
+      <td>${esc(u.display_name)}</td>
+      <td class="muted" style="font-size:12px;">${esc(u.note)}</td>
+      <td class="muted" style="font-size:12px;">${new Date(u.created_at).toLocaleDateString('ko-KR')}</td>
+      <td><button class="btn-del-user" data-id="${u.id}" data-uname="${esc(u.username)}" style="padding:4px 12px; font-size:12px; background:var(--bg-panel2); color:var(--accent); border:1px solid var(--accent);">삭제</button></td>
+    </tr>`).join('');
+    tbody.querySelectorAll('.btn-del-user').forEach(b => b.addEventListener('click', onDeleteUser));
+  } catch { tbody.innerHTML = '<tr><td colspan="5" class="muted" style="text-align:center;">불러오기 실패</td></tr>'; }
+}
+
+async function onDeleteUser(e) {
+  const btn = e.currentTarget; const id = btn.dataset.id; const uname = btn.dataset.uname;
+  if (!confirm(`'${uname}' 계정을 삭제하시겠습니까?`)) return;
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/settings/users/${id}`, { method:'DELETE' });
+    if (r.status === 204) { await loadUsers(); }
+    else { const d = await r.json(); alert(d.detail || '삭제 실패'); btn.disabled = false; }
+  } catch { alert('오류 발생'); btn.disabled = false; }
+}
+
+document.getElementById('add-user-btn').addEventListener('click', async (e) => {
+  const username = document.getElementById('new-username').value.trim();
+  const displayName = document.getElementById('new-displayname').value.trim();
+  const password = document.getElementById('new-password').value.trim();
+  const note = document.getElementById('new-note').value.trim();
+  const result = document.getElementById('user-add-result');
+  if (!username || !displayName || !password) { result.textContent = 'ID, 사용자명, 비밀번호는 필수입니다.'; result.style.color = 'var(--accent)'; return; }
+  e.target.disabled = true; result.textContent = '저장 중...'; result.style.color = '';
+  try {
+    const r = await fetch('/api/settings/users', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ username, display_name: displayName, password, note: note || null }) });
+    if (r.ok) {
+      result.textContent = '계정이 추가됐습니다.'; result.style.color = 'var(--green)';
+      ['new-username','new-displayname','new-password','new-note'].forEach(id => document.getElementById(id).value = '');
+      await loadUsers();
+    } else { const d = await r.json(); result.textContent = d.detail || '추가 실패'; result.style.color = 'var(--accent)'; }
+  } catch (err) { result.textContent = '오류: ' + err.message; result.style.color = 'var(--accent)'; }
+  finally { e.target.disabled = false; }
+});
+
+// ── 세션 설정 ──────────────────────────────────────────
+async function loadSession() {
+  try {
+    const d = await fetch('/api/settings/session').then(r => r.json());
+    document.getElementById('session-timeout').value = d.timeout_minutes || 30;
+  } catch { /* 무시 */ }
+}
+
+document.getElementById('session-save-btn').addEventListener('click', async (e) => {
+  const val = document.getElementById('session-timeout').value;
+  const result = document.getElementById('session-result');
+  e.target.disabled = true; result.textContent = '저장 중...'; result.style.color = '';
+  try {
+    const r = await fetch('/api/settings/session', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ timeout_minutes: val }) });
+    if (r.ok) { result.textContent = '저장됐습니다.'; result.style.color = 'var(--green)'; }
+    else { const d = await r.json(); result.textContent = d.detail || '실패'; result.style.color = 'var(--accent)'; }
+  } catch (err) { result.textContent = '오류: ' + err.message; result.style.color = 'var(--accent)'; }
+  finally { e.target.disabled = false; }
+});
+
+// 초기 로드
 loadTargets();
 </script>
 {% endblock %}

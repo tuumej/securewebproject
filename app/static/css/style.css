@@ -53,6 +53,12 @@ a:hover { text-decoration: underline; }
 }
 .navbar .gear:hover { color: var(--text); border-color: var(--border); text-decoration: none; }
 .navbar .gear.active { color: var(--accent); border-color: var(--accent-dim); background: var(--border-red); }
+.navbar .gear-locked { color: var(--text-dim); font-size: 20px; line-height: 1; padding: 4px 8px; opacity: 0.35; cursor: default; }
+.navbar .nav-login-btn { font-size: 11px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); letter-spacing: .5px; white-space: nowrap; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+.navbar .nav-login-btn:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+.navbar .nav-login-btn.active { border-color: var(--accent); color: var(--accent); }
+.navbar .nav-logout-btn { font-size: 11px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); background: transparent; cursor: pointer; letter-spacing: .5px; font-family: inherit; }
+.navbar .nav-logout-btn:hover { border-color: var(--accent); color: var(--accent); }
 .navbar .brand {
   color: var(--accent);
   font-weight: 700;
@@ -189,6 +195,13 @@ tbody tr:hover { background: var(--bg-panel2); }
 .pill.medium   { color: var(--amber);  border: 1px solid #3a2f16; background: #201a1033; }
 .pill.low      { color: #4db6ff; border: 1px solid #1f4a7a; background: #0d1f3333; }
 .pill.info     { color: var(--text-dim); border: 1px solid var(--border); background: #161b2333; }
+
+/* Settings 탭 */
+.settings-tab-bar { display:flex; gap:4px; margin-bottom:0; border-bottom:2px solid var(--border); flex-wrap:wrap; }
+.settings-tab-bar .stab { margin-top:0; padding:9px 20px; font-size:13px; background-color:transparent !important; background-image:none !important; border:none; border-bottom:2px solid transparent; color:var(--text-dim) !important; cursor:pointer; font-family:inherit; letter-spacing:.5px; margin-bottom:-2px; transition:color .12s; border-radius:0; box-shadow:none !important; }
+.settings-tab-bar .stab:hover { background-color:transparent !important; color:var(--text) !important; }
+.settings-tab-bar .stab.active { color:var(--accent) !important; border-bottom-color:var(--accent); font-weight:700; background-color:transparent !important; }
+.stab-panel { /* panels use .panel inside */ }
 
 /* result / log box */
 .result-box {

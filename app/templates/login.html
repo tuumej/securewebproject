@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}로그인 · securewebproject{% endblock %}
+{% block content %}
+<div style="display:flex; justify-content:center; align-items:center; min-height:60vh;">
+  <div class="panel" style="width:100%; max-width:400px; margin:0 auto;">
+    <h2 style="margin-bottom:20px; text-align:center; font-size:18px; letter-spacing:2px;">LOGIN</h2>
+
+    {% if error %}
+    <div style="background:rgba(229,57,53,0.12); border:1px solid var(--accent); border-radius:6px; padding:10px 14px; margin-bottom:16px; font-size:13px; color:var(--accent);">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/login">
+      <input type="hidden" name="next" value="{{ next }}">
+      <div style="margin-bottom:14px;">
+        <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:6px; letter-spacing:1px;">USERNAME</label>
+        <input type="text" name="username" required autofocus
+               style="width:100%; padding:10px 12px; font-size:14px; box-sizing:border-box;"
+               placeholder="Administrator">
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:6px; letter-spacing:1px;">PASSWORD</label>
+        <input type="password" name="password" required
+               style="width:100%; padding:10px 12px; font-size:14px; box-sizing:border-box;"
+               placeholder="••••••••">
+      </div>
+      <button type="submit" style="width:100%; padding:11px; font-size:14px; letter-spacing:1px;">로그인</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

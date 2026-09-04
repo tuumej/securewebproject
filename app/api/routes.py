@@ -7,12 +7,14 @@ from sqlalchemy.orm import Session, selectinload
 
 import json
 
+from app.core.auth import hash_password, require_login_api
 from app.core.crypto import decrypt_secret, encrypt_secret
 from app.core.database import get_db
 from app.models.diagnosis import DiagnosisScan, DiagnosisTarget
 from app.models.history import CrawlRecord, NotificationLog
 from app.models.news import SecurityNews
 from app.models.notification_target import NotificationTarget
+from app.models.user import User
 from app.schemas.diagnosis import (
     ConnectionTestResult,
     DiagnosisScanDetailOut,
@@ -34,7 +36,7 @@ from app.schemas.history import (
 )
 from app.schemas.news import RefreshResult, SecurityNewsOut, UnreadCount
 from app.services import diagnosis_rules
-from app.services.app_settings import get_telegram_config, set_setting
+from app.services.app_settings import get_setting, get_telegram_config, set_setting
 from app.services.notifier import send_telegram, send_to_type
 from app.services.diagnosis_rules import RulesetValidationError
 from app.services.diagnosis_ssh import test_connection
@@ -146,7 +148,7 @@ def refresh_now(db: Session = Depends(get_db)) -> RefreshResult:
     return RefreshResult(new_count=len(new_items))
 
 
-@router.get("/settings/telegram")
+@router.get("/settings/telegram", dependencies=[Depends(require_login_api)])
 def get_telegram_settings() -> dict[str, str]:
     """현재 저장된 텔레그램 설정 반환 (토큰은 마스킹)."""
     token, chat_id = get_telegram_config()
@@ -154,7 +156,7 @@ def get_telegram_settings() -> dict[str, str]:
     return {"bot_token_masked": masked if token else "", "chat_id": chat_id, "configured": str(bool(token and chat_id))}
 
 
-@router.post("/settings/telegram")
+@router.post("/settings/telegram", dependencies=[Depends(require_login_api)])
 def save_telegram_settings(body: dict, db: Session = Depends(get_db)) -> dict[str, str]:
     """텔레그램 Bot Token과 Chat ID를 DB에 저장한다."""
     token = (body.get("bot_token") or "").strip()
@@ -166,7 +168,7 @@ def save_telegram_settings(body: dict, db: Session = Depends(get_db)) -> dict[st
     return {"status": "saved"}
 
 
-@router.post("/notifications/telegram/test")
+@router.post("/notifications/telegram/test", dependencies=[Depends(require_login_api)])
 def test_telegram_notification() -> dict[str, str]:
     """텔레그램 알림 테스트 메시지를 전송한다."""
     try:
@@ -177,7 +179,7 @@ def test_telegram_notification() -> dict[str, str]:
 
 
 # ── 알림 대상 관리 (다중 채널 목록) ──────────────────────
-@router.get("/settings/notifications")
+@router.get("/settings/notifications", dependencies=[Depends(require_login_api)])
 def list_notification_targets(db: Session = Depends(get_db)) -> list[dict]:
     """등록된 알림 대상 목록 반환 (config는 복호화 후 일부만 노출)."""
     targets = list(db.scalars(select(NotificationTarget).order_by(NotificationTarget.created_at)))
@@ -206,7 +208,7 @@ def list_notification_targets(db: Session = Depends(get_db)) -> list[dict]:
     return result
 
 
-@router.post("/settings/notifications", status_code=201)
+@router.post("/settings/notifications", status_code=201, dependencies=[Depends(require_login_api)])
 def create_notification_target(body: dict, db: Session = Depends(get_db)) -> dict:
     """새 알림 대상을 등록한다."""
     target_type = (body.get("type") or "").lower()
@@ -241,7 +243,7 @@ def create_notification_target(body: dict, db: Session = Depends(get_db)) -> dic
     return {"id": nt.id, "type": nt.type, "name": nt.name, "enabled": nt.enabled}
 
 
-@router.patch("/settings/notifications/{target_id}")
+@router.patch("/settings/notifications/{target_id}", dependencies=[Depends(require_login_api)])
 def toggle_notification_target(target_id: int, body: dict, db: Session = Depends(get_db)) -> dict:
     """알림 대상 활성/비활성 토글 (또는 name 변경)."""
     nt = db.get(NotificationTarget, target_id)
@@ -255,7 +257,7 @@ def toggle_notification_target(target_id: int, body: dict, db: Session = Depends
     return {"id": nt.id, "enabled": nt.enabled, "name": nt.name}
 
 
-@router.delete("/settings/notifications/{target_id}", status_code=204)
+@router.delete("/settings/notifications/{target_id}", status_code=204, dependencies=[Depends(require_login_api)])
 def delete_notification_target(target_id: int, db: Session = Depends(get_db)) -> None:
     """알림 대상을 삭제한다."""
     nt = db.get(NotificationTarget, target_id)
@@ -265,7 +267,7 @@ def delete_notification_target(target_id: int, db: Session = Depends(get_db)) ->
     db.commit()
 
 
-@router.post("/settings/notifications/{target_id}/test")
+@router.post("/settings/notifications/{target_id}/test", dependencies=[Depends(require_login_api)])
 def test_notification_target(target_id: int, db: Session = Depends(get_db)) -> dict:
     """특정 알림 대상으로 테스트 메시지를 전송한다."""
     nt = db.get(NotificationTarget, target_id)
@@ -277,6 +279,97 @@ def test_notification_target(target_id: int, db: Session = Depends(get_db)) -> d
         return {"status": "ok"}
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+# ── 사용자 관리 ──────────────────────────────────────
+@router.get("/settings/users", dependencies=[Depends(require_login_api)])
+def list_users(db: Session = Depends(get_db)) -> list[dict]:
+    """등록된 사용자 목록 반환 (비밀번호 제외)."""
+    users = list(db.scalars(select(User).order_by(User.created_at)))
+    return [
+        {
+            "id": u.id,
+            "username": u.username,
+            "display_name": u.display_name or u.username,
+            "note": u.note or "",
+            "created_at": u.created_at.isoformat(),
+        }
+        for u in users
+    ]
+
+
+@router.post("/settings/users", status_code=201, dependencies=[Depends(require_login_api)])
+def create_user(body: dict, db: Session = Depends(get_db)) -> dict:
+    """새 사용자를 등록한다."""
+    username = (body.get("username") or "").strip()
+    display_name = (body.get("display_name") or "").strip()
+    password = (body.get("password") or "").strip()
+    note = (body.get("note") or "").strip() or None
+
+    if not username:
+        raise HTTPException(status_code=422, detail="ID는 필수입니다.")
+    if not password:
+        raise HTTPException(status_code=422, detail="비밀번호는 필수입니다.")
+    if db.scalar(select(User).where(User.username == username)):
+        raise HTTPException(status_code=409, detail="이미 존재하는 ID입니다.")
+
+    user = User(
+        username=username,
+        display_name=display_name or username,
+        hashed_password=hash_password(password),
+        note=note,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"id": user.id, "username": user.username, "display_name": user.display_name}
+
+
+@router.delete("/settings/users/{user_id}", status_code=204, dependencies=[Depends(require_login_api)])
+def delete_user(user_id: int, request: Request, db: Session = Depends(get_db)) -> None:
+    """사용자를 삭제한다. 자기 자신은 삭제할 수 없다."""
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+    current_username = request.session.get("username")
+    if user.username == current_username:
+        raise HTTPException(status_code=400, detail="자기 자신은 삭제할 수 없습니다.")
+    db.delete(user)
+    db.commit()
+
+
+@router.patch("/settings/users/{user_id}/password", dependencies=[Depends(require_login_api)])
+def change_password(user_id: int, body: dict, db: Session = Depends(get_db)) -> dict:
+    """비밀번호를 변경한다."""
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+    new_pw = (body.get("password") or "").strip()
+    if not new_pw:
+        raise HTTPException(status_code=422, detail="새 비밀번호를 입력하세요.")
+    user.hashed_password = hash_password(new_pw)
+    db.commit()
+    return {"status": "changed"}
+
+
+# ── 세션 설정 ─────────────────────────────────────────
+@router.get("/settings/session", dependencies=[Depends(require_login_api)])
+def get_session_settings() -> dict:
+    """세션 타임아웃 설정 반환."""
+    timeout = get_setting("session_timeout_minutes", "30")
+    return {"timeout_minutes": timeout}
+
+
+@router.post("/settings/session", dependencies=[Depends(require_login_api)])
+def save_session_settings(body: dict, db: Session = Depends(get_db)) -> dict:
+    """세션 타임아웃(분)을 저장한다."""
+    raw = body.get("timeout_minutes", "30")
+    try:
+        minutes = max(1, int(raw))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="숫자를 입력하세요.")
+    set_setting(db, "session_timeout_minutes", str(minutes))
+    return {"timeout_minutes": str(minutes)}
 
 
 # ── 알림 (종 배지) ────────────────────────────────────

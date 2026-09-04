@@ -4,6 +4,7 @@ from app.models.history import CrawlRecord, NotificationLog
 from app.models.news import SecurityNews
 from app.models.notification_target import NotificationTarget
 from app.models.settings import AppSetting
+from app.models.user import User
 
 __all__ = [
     "CrawlRecord",
@@ -14,4 +15,5 @@ __all__ = [
     "DiagnosisFinding",
     "AppSetting",
     "NotificationTarget",
+    "User",
 ]
