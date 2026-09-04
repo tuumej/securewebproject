@@ -1,7 +1,7 @@
 """API 엔드포인트 — 크롤링/알림 작업 등록, 이력 조회, 보안뉴스/알림, 진단."""
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, selectinload
 

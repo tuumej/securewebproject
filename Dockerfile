@@ -14,7 +14,7 @@ COPY app ./app
 COPY alembic.ini .
 COPY alembic ./alembic
 
-RUN useradd --create-home appuser
+RUN useradd --create-home appuser && chown -R appuser:appuser /code
 USER appuser
 
 EXPOSE 8000
