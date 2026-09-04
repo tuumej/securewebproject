@@ -14,15 +14,15 @@ BASE_DIR = Path(__file__).resolve().parent
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """로컬 개발 편의: SQLite일 때만 테이블 자동 생성.
+    """기동 시 누락된 테이블을 자동 생성한다 (SQLite·PostgreSQL 공통).
 
-    PostgreSQL(운영)은 Alembic 마이그레이션을 사용하므로 여기서 생성하지 않는다.
+    create_all은 이미 존재하는 테이블을 건드리지 않으므로 운영에서도 안전하다.
+    단, 기존 테이블의 컬럼 추가·변경은 직접 ALTER TABLE로 처리해야 한다.
     """
-    if settings.database_url.startswith("sqlite"):
-        from app.core.database import Base, engine
-        import app.models  # noqa: F401 - 모델 등록
+    from app.core.database import Base, engine
+    import app.models  # noqa: F401 - 모델 등록
 
-        Base.metadata.create_all(engine)
+    Base.metadata.create_all(engine)
     yield
 
 
