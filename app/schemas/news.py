@@ -14,6 +14,7 @@ class SecurityNewsOut(BaseModel):
     url: str
     published_at: datetime | None = None
     is_read: bool
+    is_archived: bool = False
     created_at: datetime
 
 

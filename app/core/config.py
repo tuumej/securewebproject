@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # 알림 (Slack)
     slack_webhook_url: str = ""
 
+    # 알림 (Telegram)
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+
     # 보안뉴스 수집 대상
     # 1) 데일리시큐 긴급속보
     news_dailysecu_url: str = (

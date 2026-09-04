@@ -63,7 +63,7 @@ async function loadTodayNews() {
       .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); });
     if (!rows.length) { panel.hidden = true; return; }        // 오늘자 없음 → 표시 안 함
     const top = rows.slice(0, 3);                              // 최신 3건만
-    cnt.textContent = `(오늘 ${rows.length}건 · 최신 3건)`;
+    cnt.textContent = `(오늘 ${rows.length}건)`;
     list.innerHTML = top.map(n => `
       <li>
         <span class="news-time">${fmtTime(n.published_at)}</span>

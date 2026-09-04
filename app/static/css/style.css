@@ -181,7 +181,14 @@ tbody tr:hover { background: var(--bg-panel2); }
 .pill { padding: 2px 9px; border-radius: 3px; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
 .pill.success, .pill.sent { color: var(--green);  border: 1px solid #1c3a24; background: #10201533; }
 .pill.failed  { color: var(--accent); border: 1px solid var(--border-red); background: #2a151533; }
-.pill.pending, .pill.queued { color: var(--amber); border: 1px solid #3a2f16; background: #201a1033; }
+.pill.pending, .pill.queued, .pill.running, .pill.unknown { color: var(--amber); border: 1px solid #3a2f16; background: #201a1033; }
+
+/* 진단 심각도 */
+.pill.critical { color: #ff4747; border: 1px solid #4a1015; background: #2a0a0d33; }
+.pill.high     { color: var(--accent); border: 1px solid var(--border-red); background: #2a151533; }
+.pill.medium   { color: var(--amber);  border: 1px solid #3a2f16; background: #201a1033; }
+.pill.low      { color: #4db6ff; border: 1px solid #1f4a7a; background: #0d1f3333; }
+.pill.info     { color: var(--text-dim); border: 1px solid var(--border); background: #161b2333; }
 
 /* result / log box */
 .result-box {
@@ -196,6 +203,33 @@ tbody tr:hover { background: var(--bg-panel2); }
   font-size: 13px;
 }
 .muted { color: var(--text-dim); }
+
+/* 진단 진행 단계 스테퍼 */
+.progress-steps { list-style: none; display: flex; gap: 6px; padding: 0; margin: 10px 0 4px; flex-wrap: wrap; }
+.progress-step {
+  padding: 5px 11px;
+  border-radius: 3px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  background: var(--bg-inset);
+}
+.progress-step.done   { color: var(--green); border-color: #1c3a24; background: #10201533; }
+.progress-step.active { color: var(--amber); border-color: #3a2f16; background: #201a1033; animation: progress-pulse 1.4s ease-in-out infinite; }
+@keyframes progress-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+
+/* 연결 테스트 결과 아이콘 */
+.test-icon {
+  display: inline-block;
+  margin-left: 10px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: default;
+}
+.test-icon.ok   { color: var(--green); }
+.test-icon.fail { color: var(--accent); }
 
 /* 인라인 버튼 (패널 헤더용) */
 .btn-inline {

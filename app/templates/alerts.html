@@ -8,6 +8,7 @@
   <h2>
     최근 알림
     <button id="read-btn" class="btn-inline">모두 읽음</button>
+    <button id="del-read-btn" class="btn-inline">읽은 알림 삭제</button>
   </h2>
   <div id="status" class="muted" style="margin-bottom:10px;">불러오는 중...</div>
   <ul class="news-list" id="alert-list"></ul>
@@ -18,31 +19,72 @@
 function fmt(ts) { return ts ? new Date(ts).toLocaleString('ko-KR') : ''; }
 function esc(s) { return (s ?? '').toString().replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
 
+let rows = [];
+
+function updateStatus() {
+  const unread = rows.filter(r => !r.is_read).length;
+  document.getElementById('status').textContent =
+    rows.length ? `총 ${rows.length}건 · 미확인 ${unread}건` : '알림이 없습니다.';
+}
+
 async function loadAlerts() {
   const list = document.getElementById('alert-list');
-  const status = document.getElementById('status');
   try {
-    const rows = await fetch('/api/alerts').then(r => { if(!r.ok) throw new Error(r.status); return r.json(); });
-    if (!rows.length) { list.innerHTML = ''; status.textContent = '알림이 없습니다.'; return; }
-    const unread = rows.filter(r => !r.is_read).length;
-    status.textContent = `총 ${rows.length}건 · 미확인 ${unread}건`;
-    list.innerHTML = rows.map(n => `
-      <li class="${n.is_read ? '' : 'unread'}">
-        <span class="news-time">${fmt(n.published_at || n.created_at)}</span>
-        <a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a>
-        ${n.is_read ? '' : '<span class="pill pending">NEW</span>'}
-      </li>`).join('');
+    rows = await fetch('/api/alerts').then(r => { if(!r.ok) throw new Error(r.status); return r.json(); });
+    renderAlerts();
   } catch (err) {
-    status.textContent = '불러오기 실패 (' + err.message + ') — DB가 실행 중인지 확인하세요';
+    document.getElementById('status').textContent = '불러오기 실패 (' + err.message + ') — DB가 실행 중인지 확인하세요';
   }
+}
+
+function renderAlerts() {
+  const list = document.getElementById('alert-list');
+  if (!rows.length) { list.innerHTML = ''; updateStatus(); return; }
+  updateStatus();
+  list.innerHTML = rows.map(n => `
+    <li class="${n.is_read ? '' : 'unread'}" id="alert-item-${n.id}">
+      <span class="news-time">${fmt(n.published_at || n.created_at)}</span>
+      <a href="${esc(n.url)}" target="_blank" rel="noopener" data-news-id="${n.id}">${esc(n.title)}</a>
+      ${n.is_read ? '' : `<span class="pill pending" id="alert-new-${n.id}">NEW</span>`}
+    </li>`).join('');
+
+  list.querySelectorAll('a[data-news-id]').forEach(a => {
+    a.addEventListener('click', async () => {
+      const id = Number(a.getAttribute('data-news-id'));
+      await fetch(`/api/alerts/${id}/read`, { method: 'POST' }).catch(() => {});
+      const item = rows.find(r => r.id === id);
+      if (item) item.is_read = true;
+      document.getElementById(`alert-item-${id}`)?.classList.remove('unread');
+      document.getElementById(`alert-new-${id}`)?.remove();
+      updateStatus();
+      if (window.refreshBadge) window.refreshBadge();
+    });
+  });
 }
 
 document.getElementById('read-btn').addEventListener('click', async () => {
   try {
     await fetch('/api/alerts/read', { method: 'POST' });
-    await loadAlerts();
+    rows.forEach(r => r.is_read = true);
+    document.querySelectorAll('#alert-list li').forEach(li => li.classList.remove('unread'));
+    document.querySelectorAll('[id^="alert-new-"]').forEach(el => el.remove());
+    updateStatus();
     if (window.refreshBadge) window.refreshBadge();
   } catch { /* ignore */ }
+});
+
+document.getElementById('del-read-btn').addEventListener('click', async () => {
+  const readCount = rows.filter(r => r.is_read).length;
+  if (!readCount) { alert('삭제할 읽은 알림이 없습니다.'); return; }
+  if (!confirm(`읽은 알림 ${readCount}건을 삭제하시겠습니까?`)) return;
+  try {
+    await fetch('/api/alerts/read', { method: 'DELETE' });
+    rows = rows.filter(r => !r.is_read);
+    renderAlerts();
+    if (window.refreshBadge) window.refreshBadge();
+  } catch (err) {
+    alert('삭제 실패: ' + err.message);
+  }
 });
 
 loadAlerts();

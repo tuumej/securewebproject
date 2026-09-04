@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.news import SecurityNews
-from app.services.notifier import send_notification
+from app.services.notifier import send_to_all_enabled
 
 KST = timezone(timedelta(hours=9))
 
@@ -279,18 +279,15 @@ def refresh_security_news(db: Session) -> list[SecurityNews]:
 
     db.commit()
 
-    # 오늘자 신규 기사만 Slack 알림 (과거 기사 대량 알림 방지)
+    # 오늘자 신규 기사만 알림 전송 (과거 기사 대량 알림 방지)
     for news in new_items:
         if not is_today_kst(news.published_at):
             continue
         label = SOURCE_LABELS.get(news.source, news.source)
+        msg = f"[{label}] {news.title}\n{news.url}"
         try:
-            send_notification(
-                "slack",
-                settings.news_slack_channel,
-                f"[{label}] {news.title}\n{news.url}",
-            )
-        except Exception:  # noqa: BLE001 - 알림 실패가 크롤링을 막지 않도록
+            send_to_all_enabled(msg)
+        except Exception:  # noqa: BLE001
             pass
 
     return new_items

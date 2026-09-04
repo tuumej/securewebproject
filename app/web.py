@@ -33,6 +33,16 @@ def history_page(request: Request):
     return templates.TemplateResponse(request, "history.html", {"active": "history"})
 
 
+@router.get("/diagnosis", response_class=HTMLResponse)
+def diagnosis_page(request: Request):
+    return templates.TemplateResponse(request, "diagnosis.html", {"active": "diagnosis"})
+
+
+@router.get("/diagnosis/rules", response_class=HTMLResponse)
+def diagnosis_rules_page(request: Request):
+    return templates.TemplateResponse(request, "diagnosis_rules.html", {"active": "diagnosis"})
+
+
 @router.get("/security-news", response_class=HTMLResponse)
 def security_news_page(request: Request):
     return templates.TemplateResponse(
@@ -50,6 +60,8 @@ def settings_page(request: Request):
     ctx = {
         "active": "settings",
         "slack_configured": bool(settings.slack_webhook_url),
+        "telegram_configured": bool(settings.telegram_bot_token and settings.telegram_chat_id),
+        "telegram_chat_id": settings.telegram_chat_id,
         "news_dailysecu_url": settings.news_dailysecu_url,
         "news_boannews_url": settings.news_boannews_url,
         "news_slack_channel": settings.news_slack_channel,

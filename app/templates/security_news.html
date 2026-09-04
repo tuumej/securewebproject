@@ -8,6 +8,7 @@
   <h2>
     보안 기사 (오늘)
     <button id="refresh-btn" class="btn-inline">지금 갱신</button>
+    <button id="save-btn" class="btn-inline">저장 +</button>
   </h2>
   <div class="news-filters" id="news-filters">
     <button class="btn-inline active" data-src="all">전체</button>
@@ -17,6 +18,12 @@
   </div>
   <div id="status" class="muted" style="margin:10px 0;">불러오는 중...</div>
   <ul class="news-list" id="news-list"></ul>
+</div>
+
+<div class="panel">
+  <h2>보안 기사 (보관)</h2>
+  <div id="archive-status" class="muted" style="margin-bottom:10px;">불러오는 중...</div>
+  <ul class="news-list" id="archive-list"></ul>
 </div>
 {% endblock %}
 {% block scripts %}
@@ -43,15 +50,16 @@ function render() {
   status.textContent = `${note} · 표시 ${rows.length}건 / 전체 ${allRows.length}건`;
   list.innerHTML = rows.map(n => `
     <li>
+      <input type="checkbox" class="news-check" data-id="${n.id}" style="margin-right:8px;width:auto;cursor:pointer;" ${n.is_archived ? 'disabled title="이미 보관됨"' : ''}>
       <span class="news-time">${fmt(n.published_at)}</span>
       <span class="news-src src-${esc(n.source)}">${SRC_LABEL[n.source] || esc(n.source)}</span>
       <a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a>
+      ${n.is_archived ? '<span class="pill info" style="font-size:10px;">보관됨</span>' : ''}
     </li>`).join('');
 }
 
 async function loadNews() {
   try {
-    // auto_refresh: 비면 즉시 수집 · fallback_recent: 오늘자 없으면 최신으로 대체
     allRows = await fetch('/api/security-news?today_only=true&auto_refresh=true&fallback_recent=true')
       .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); });
     render();
@@ -59,6 +67,63 @@ async function loadNews() {
     document.getElementById('status').textContent = '불러오기 실패 (' + err.message + ') — DB가 실행 중인지 확인하세요';
   }
 }
+
+async function loadArchive() {
+  const list = document.getElementById('archive-list');
+  const status = document.getElementById('archive-status');
+  try {
+    const rows = await fetch('/api/security-news/archived').then(r => { if(!r.ok) throw new Error(r.status); return r.json(); });
+    if (!rows.length) { list.innerHTML = ''; status.textContent = '보관된 기사가 없습니다.'; return; }
+    status.textContent = `${rows.length}건`;
+    list.innerHTML = rows.map(n => `
+      <li id="archive-item-${n.id}">
+        <span class="news-time">${fmt(n.published_at)}</span>
+        <span class="news-src src-${esc(n.source)}">${SRC_LABEL[n.source] || esc(n.source)}</span>
+        <a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a>
+        <button type="button" class="btn-inline archive-del-btn" data-id="${n.id}" style="margin-left:auto;color:var(--accent);">−</button>
+      </li>`).join('');
+  } catch (err) {
+    status.textContent = '불러오기 실패 (' + err.message + ')';
+  }
+}
+
+document.getElementById('archive-list').addEventListener('click', async (e) => {
+  const btn = e.target.closest('.archive-del-btn');
+  if (!btn) return;
+  const id = btn.getAttribute('data-id');
+  btn.disabled = true;
+  try {
+    await fetch(`/api/security-news/${id}/archive`, { method: 'DELETE' });
+    document.getElementById(`archive-item-${id}`)?.remove();
+    const remaining = document.querySelectorAll('#archive-list li').length;
+    document.getElementById('archive-status').textContent = remaining ? `${remaining}건` : '보관된 기사가 없습니다.';
+    const row = allRows.find(r => r.id === Number(id));
+    if (row) { row.is_archived = false; render(); }
+  } catch (err) {
+    alert('삭제 실패: ' + err.message);
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('save-btn').addEventListener('click', async () => {
+  const checked = [...document.querySelectorAll('.news-check:checked')].map(c => Number(c.getAttribute('data-id')));
+  if (!checked.length) { alert('저장할 기사를 선택하세요.'); return; }
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true; btn.textContent = '저장 중...';
+  let saved = 0;
+  for (const id of checked) {
+    try {
+      await fetch(`/api/security-news/${id}/archive`, { method: 'POST' });
+      const row = allRows.find(r => r.id === id);
+      if (row) row.is_archived = true;
+      saved++;
+    } catch { /* 개별 실패는 무시 */ }
+  }
+  btn.disabled = false; btn.textContent = '저장 +';
+  render();
+  await loadArchive();
+  if (saved) document.getElementById('status').textContent = `${saved}건 보관함에 저장됐습니다.`;
+});
 
 document.getElementById('news-filters').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-src]');
@@ -83,5 +148,6 @@ document.getElementById('refresh-btn').addEventListener('click', async (e) => {
 });
 
 loadNews();
+loadArchive();
 </script>
 {% endblock %}

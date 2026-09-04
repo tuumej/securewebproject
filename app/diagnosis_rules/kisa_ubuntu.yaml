@@ -1,0 +1,130 @@
+meta:
+  name: "KISA 기준 (Ubuntu 24.04 발췌)"
+  description: "SSH/방화벽/계정/패키지 등 13개 항목 - 최초 마이그레이션 기본 기준"
+  os: ["ubuntu"]
+
+rules:
+  U-01:
+    name: "root 원격 로그인 제한"
+    target: "sshd_config_value:PermitRootLogin"
+    compare: equals_any
+    expected: ["no"]
+    on_missing: fail
+    severity: CRITICAL
+    needs_sudo: false
+    recommendation: "sshd_config에 PermitRootLogin no로 설정하세요."
+
+  U-02:
+    name: "SSH 비밀번호 인증 제한"
+    target: "sshd_config_value:PasswordAuthentication"
+    compare: equals_any
+    expected: ["no"]
+    on_missing: fail
+    severity: HIGH
+    needs_sudo: false
+    recommendation: "PasswordAuthentication no로 설정하고 키 기반 인증만 허용하세요."
+
+  U-03:
+    name: "UFW 방화벽 활성화 상태"
+    target: "command_value:ufw status | awk '/^Status:/{print $2}'"
+    compare: equals_any
+    expected: ["active"]
+    on_missing: unknown
+    severity: HIGH
+    needs_sudo: true
+    recommendation: "sudo ufw enable 로 방화벽을 활성화하세요."
+
+  U-04:
+    name: "fail2ban 서비스 활성화"
+    target: "systemd_service_active:fail2ban"
+    compare: equals_any
+    expected: ["active"]
+    on_missing: fail
+    severity: MEDIUM
+    needs_sudo: false
+    recommendation: "sudo apt install fail2ban && sudo systemctl enable --now fail2ban 으로 설치/활성화하세요."
+
+  U-05:
+    name: "NOPASSWD sudo 설정 여부"
+    target: "command_list_lines:grep -RhE '^[^#].*NOPASSWD' /etc/sudoers /etc/sudoers.d 2>/dev/null"
+    compare: list_empty
+    on_missing: fail
+    severity: HIGH
+    needs_sudo: true
+    recommendation: "불필요한 NOPASSWD 설정을 제거하세요."
+
+  U-06:
+    name: "위험 서비스 포트 노출 여부"
+    target: "risky_ports:"
+    compare: list_empty
+    on_missing: fail
+    severity: HIGH
+    needs_sudo: false
+    recommendation: "불필요한 서비스를 중지하고 방화벽으로 차단하세요."
+
+  U-07:
+    name: "AppArmor 활성화 상태"
+    target: "systemd_service_active:apparmor"
+    compare: equals_any
+    expected: ["active"]
+    on_missing: fail
+    severity: MEDIUM
+    needs_sudo: false
+    recommendation: "sudo systemctl enable --now apparmor 로 활성화하세요."
+
+  U-08:
+    name: "빈 비밀번호 계정 여부"
+    target: "command_list_lines:awk -F: '($2==\"\"){print $1}' /etc/shadow"
+    compare: list_empty
+    on_missing: fail
+    severity: CRITICAL
+    needs_sudo: true
+    recommendation: "해당 계정에 비밀번호를 설정하거나 sudo passwd -l <계정> 으로 잠그세요."
+
+  U-09:
+    name: "대기 중인 패키지 업데이트"
+    target: "command_list_lines:apt list --upgradable 2>/dev/null | grep -v '^Listing'"
+    compare: list_empty
+    on_missing: fail
+    severity: MEDIUM
+    needs_sudo: false
+    recommendation: "sudo apt update && sudo apt upgrade 로 패키지를 최신화하세요."
+
+  U-10:
+    name: "보안 업데이트 대기"
+    target: "command_list_lines:apt list --upgradable 2>/dev/null | grep -i security"
+    compare: list_empty
+    on_missing: fail
+    severity: HIGH
+    needs_sudo: false
+    recommendation: "가능한 빨리 sudo apt update && sudo apt upgrade 로 보안 패치를 적용하세요."
+
+  U-11:
+    name: "자동 보안 업데이트 활성화"
+    target: "command_list_lines:systemctl is-enabled unattended-upgrades 2>/dev/null; grep -q '1' /etc/apt/apt.conf.d/20auto-upgrades 2>/dev/null && echo enabled"
+    compare: equals_any
+    expected: ["enabled"]
+    on_missing: fail
+    severity: MEDIUM
+    needs_sudo: false
+    recommendation: "sudo dpkg-reconfigure unattended-upgrades 로 자동 보안 업데이트를 활성화하세요."
+
+  U-12:
+    name: "재부팅 필요 여부"
+    target: "command_value:test -f /var/run/reboot-required && echo REQUIRED || echo NOT_REQUIRED"
+    compare: not_equals_any
+    expected: ["REQUIRED"]
+    on_missing: fail
+    severity: MEDIUM
+    needs_sudo: false
+    recommendation: "가능한 빨리 서버를 재부팅하세요."
+
+  U-13:
+    name: "NTP 시간 동기화 상태"
+    target: "command_value:timedatectl show -p NTPSynchronized --value"
+    compare: equals_any
+    expected: ["yes"]
+    on_missing: fail
+    severity: LOW
+    needs_sudo: false
+    recommendation: "sudo timedatectl set-ntp true 로 시간 동기화를 활성화하세요."

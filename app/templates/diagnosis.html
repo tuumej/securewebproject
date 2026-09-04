@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+{% block title %}진단 · securewebproject{% endblock %}
+{% block content %}
+<h1 class="page-title">Diagnosis</h1>
+<p class="page-subtitle">Ubuntu 24.04 대상 서버에 SSH로 접속해 읽기 전용 취약점 점검을 수행합니다</p>
+<p><a href="/diagnosis/rules">⚙ 진단 기준 관리 →</a></p>
+
+<div class="panel">
+  <h2>대상 서버 등록</h2>
+  <form id="target-form">
+    <label for="name">이름</label>
+    <input type="text" id="name" name="name" placeholder="예: web-01" required>
+
+    <label for="host">Host</label>
+    <input type="text" id="host" name="host" placeholder="192.0.2.10" required>
+
+    <label for="port">Port</label>
+    <input type="number" id="port" name="port" value="22" required>
+
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" placeholder="ubuntu" required>
+
+    <label for="auth_type">인증 방식</label>
+    <select id="auth_type" name="auth_type">
+      <option value="password">비밀번호</option>
+      <option value="private_key">개인키 (패스프레이즈 없음)</option>
+    </select>
+
+    <div id="secret-password-group">
+      <label for="secret-password">비밀번호</label>
+      <input type="password" id="secret-password" autocomplete="new-password">
+    </div>
+    <div id="secret-key-group" hidden>
+      <label for="secret-key">개인키 (PEM/OpenSSH, 패스프레이즈 없음)</label>
+      <textarea id="secret-key" rows="6" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea>
+    </div>
+
+    <button type="submit">대상 등록</button>
+  </form>
+  <div class="result-box" id="target-result">대기 중...</div>
+</div>
+
+<div class="panel">
+  <h2>등록된 대상</h2>
+  <label for="ruleset-select">적용할 진단 기준</label>
+  <select id="ruleset-select"><option value="">불러오는 중...</option></select>
+  <table>
+    <thead><tr><th>ID</th><th>이름</th><th>Host</th><th>Username</th><th>인증</th><th>등록일</th><th></th></tr></thead>
+    <tbody id="target-rows"><tr><td colspan="7" class="muted">불러오는 중...</td></tr></tbody>
+  </table>
+</div>
+
+<div class="panel">
+  <h2>최근 진단 이력</h2>
+  <table>
+    <thead><tr><th>ID</th><th>대상</th><th>기준</th><th>상태</th><th>Critical</th><th>High</th><th>Medium</th><th>Low</th><th>시작</th></tr></thead>
+    <tbody id="scan-rows"><tr><td colspan="9" class="muted">불러오는 중...</td></tr></tbody>
+  </table>
+</div>
+
+<div class="panel">
+  <h2>진단 결과</h2>
+  <div id="scan-detail" class="muted">대상을 등록하고 진단을 시작하거나, 위 이력에서 행을 클릭하세요.</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function pill(v) { return `<span class="pill ${v}">${v}</span>`; }
+function fmt(ts) { return ts ? new Date(ts).toLocaleString('ko-KR') : '-'; }
+function esc(s) { return (s ?? '').toString().replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+
+const PHASES = ['connecting', 'os_identify', 'collecting', 'reporting', 'done'];
+const PHASE_LABEL = {
+  connecting: 'SSH 접속 확인', os_identify: 'OS 식별', collecting: '진단 항목 수집',
+  reporting: '리포트 생성', done: '완료',
+};
+
+function renderProgress(scan) {
+  if (scan.status !== 'pending' && scan.status !== 'running') return '';
+  const idx = scan.phase ? PHASES.indexOf(scan.phase) : -1;
+  const steps = PHASES.map((p, i) => {
+    const cls = idx < 0 ? 'todo' : i < idx ? 'done' : i === idx ? 'active' : 'todo';
+    return `<li class="progress-step ${cls}">${esc(PHASE_LABEL[p])}</li>`;
+  }).join('');
+  let note = '';
+  if (scan.status === 'pending') {
+    note = '<p class="muted">⏳ 대기 중 — 아직 워커가 작업을 시작하지 않았습니다. (Celery 워커가 실행 중인지 확인하세요)</p>';
+  } else if (idx < 0) {
+    note = '<p class="muted">⏳ 진행 중...</p>';
+  }
+  return `<ol class="progress-steps">${steps}</ol>${note}`;
+}
+
+document.getElementById('auth_type').addEventListener('change', (e) => {
+  const isKey = e.target.value === 'private_key';
+  document.getElementById('secret-password-group').hidden = isKey;
+  document.getElementById('secret-key-group').hidden = !isKey;
+});
+
+document.getElementById('target-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const box = document.getElementById('target-result');
+  const authType = document.getElementById('auth_type').value;
+  const secret = authType === 'password'
+    ? document.getElementById('secret-password').value
+    : document.getElementById('secret-key').value;
+  const body = {
+    name: document.getElementById('name').value,
+    host: document.getElementById('host').value,
+    port: Number(document.getElementById('port').value) || 22,
+    username: document.getElementById('username').value,
+    auth_type: authType,
+    secret,
+  };
+  box.textContent = '등록 중...';
+  try {
+    const res = await fetch('/api/diagnosis/targets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(res.status);
+    box.textContent = '✔ 대상이 등록되었습니다.';
+    e.target.reset();
+    document.getElementById('port').value = 22;
+    document.getElementById('secret-password-group').hidden = false;
+    document.getElementById('secret-key-group').hidden = true;
+    loadTargets();
+  } catch (err) {
+    box.style.color = 'var(--accent)';
+    box.textContent = '✖ 등록 실패: ' + err.message;
+  }
+});
+
+async function loadRulesets() {
+  const el = document.getElementById('ruleset-select');
+  try {
+    const rows = await fetch('/api/diagnosis/rulesets').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+    if (!rows.length) { el.innerHTML = '<option value="">등록된 기준이 없습니다</option>'; return; }
+    el.innerHTML = rows.map(r => `<option value="${esc(r.id)}">${esc(r.name)} (${r.rule_count}개 항목)</option>`).join('');
+  } catch (err) {
+    el.innerHTML = '<option value="">불러오기 실패</option>';
+  }
+}
+
+async function loadTargets() {
+  const el = document.getElementById('target-rows');
+  try {
+    const rows = await fetch('/api/diagnosis/targets').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+    if (!rows.length) { el.innerHTML = '<tr><td colspan="7" class="muted">등록된 대상이 없습니다</td></tr>'; return; }
+    el.innerHTML = rows.map(t => `
+      <tr>
+        <td>${t.id}</td><td>${esc(t.name)}</td><td>${esc(t.host)}:${t.port}</td>
+        <td>${esc(t.username)}</td><td>${esc(t.auth_type)}</td><td>${fmt(t.created_at)}</td>
+        <td>
+          <button type="button" class="btn-inline" data-test="${t.id}">연결 테스트</button>
+          <button type="button" class="btn-inline" data-scan="${t.id}">진단 시작</button>
+          <button type="button" class="btn-inline" data-del="${t.id}">삭제</button>
+          <span id="test-result-${t.id}"></span>
+        </td>
+      </tr>`).join('');
+  } catch (err) {
+    el.innerHTML = `<tr><td colspan="7" class="muted">불러오기 실패 (${err.message})</td></tr>`;
+  }
+}
+
+document.getElementById('target-rows').addEventListener('click', async (e) => {
+  const testId = e.target.getAttribute('data-test');
+  const scanId = e.target.getAttribute('data-scan');
+  const delId = e.target.getAttribute('data-del');
+  if (testId) {
+    const resultEl = document.getElementById(`test-result-${testId}`);
+    e.target.disabled = true;
+    resultEl.textContent = '확인 중...';
+    try {
+      const res = await fetch(`/api/diagnosis/targets/${testId}/test-connection`, { method: 'POST' });
+      const data = await res.json();
+      resultEl.innerHTML = data.ok
+        ? `<span class="test-icon ok" title="${esc(data.message)}">O</span>`
+        : `<span class="test-icon fail" title="${esc(data.message)}">X</span>`;
+    } catch (err) {
+      resultEl.innerHTML = `<span class="test-icon fail" title="확인 실패: ${esc(err.message)}">X</span>`;
+    } finally {
+      e.target.disabled = false;
+    }
+  } else if (scanId) {
+    const rulesetId = document.getElementById('ruleset-select').value;
+    if (!rulesetId) { alert('먼저 적용할 진단 기준을 선택하세요.'); return; }
+    e.target.disabled = true;
+    try {
+      const res = await fetch(`/api/diagnosis/targets/${scanId}/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ruleset_id: rulesetId }),
+      });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.detail || res.status);
+      }
+      const data = await res.json();
+      loadScans();
+      document.getElementById('scan-detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      pollScan(data.scan_id);
+    } catch (err) {
+      alert('진단 시작 실패: ' + err.message);
+      loadScans();
+    } finally {
+      e.target.disabled = false;
+    }
+  } else if (delId) {
+    if (!confirm('이 대상을 삭제하시겠습니까? 관련 진단 이력도 함께 삭제됩니다.')) return;
+    try {
+      const res = await fetch(`/api/diagnosis/targets/${delId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(res.status);
+      loadTargets();
+      loadScans();
+    } catch (err) {
+      alert('삭제 실패: ' + err.message);
+    }
+  }
+});
+
+async function loadScans() {
+  const el = document.getElementById('scan-rows');
+  try {
+    const rows = await fetch('/api/diagnosis/scans').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+    if (!rows.length) { el.innerHTML = '<tr><td colspan="9" class="muted">진단 이력이 없습니다</td></tr>'; return; }
+    el.innerHTML = rows.map(s => `
+      <tr data-scan-row="${s.id}" style="cursor:pointer">
+        <td>${s.id}</td><td>${esc(s.target_name)}</td><td>${esc(s.ruleset_id)}</td><td>${pill(s.status)}</td>
+        <td>${s.critical_count}</td><td>${s.high_count}</td><td>${s.medium_count}</td><td>${s.low_count}</td>
+        <td>${fmt(s.started_at)}</td>
+      </tr>`).join('');
+  } catch (err) {
+    el.innerHTML = `<tr><td colspan="9" class="muted">불러오기 실패 (${err.message})</td></tr>`;
+  }
+}
+
+document.getElementById('scan-rows').addEventListener('click', (e) => {
+  const tr = e.target.closest('tr[data-scan-row]');
+  if (!tr) return;
+  loadScanDetail(tr.getAttribute('data-scan-row'));
+});
+
+let pollTimer = null;
+
+function renderScanDetail(scan) {
+  const el = document.getElementById('scan-detail');
+  const os = scan.os_id ? ` · OS: ${esc(scan.os_id)} ${esc(scan.os_version || '')}` : '';
+  const header = `<p>#${scan.id} · ${esc(scan.target_name)} · 기준: ${esc(scan.ruleset_id)} · ${pill(scan.status)}${os}` +
+    (scan.error ? ` · <span class="muted">${esc(scan.error)}</span>` : '') +
+    (scan.status === 'success' || scan.status === 'failed'
+      ? ` · <a href="/api/diagnosis/scans/${scan.id}/report" download>리포트 다운로드</a>` : '') +
+    '</p>' + renderProgress(scan);
+  if (!scan.findings || !scan.findings.length) {
+    el.innerHTML = header + '<p class="muted">아직 점검 결과가 없습니다.</p>';
+    return;
+  }
+  const rows = scan.findings.map(f => `
+    <tr>
+      <td>${pill(f.severity)}</td><td>${pill(f.status)}</td><td>${esc(f.check_id)}</td><td>${esc(f.title)}</td>
+      <td>${esc(f.detail)}</td><td>${esc(f.recommendation) || '-'}</td>
+      <td><details><summary>보기</summary><pre>${esc(f.evidence) || '(없음)'}</pre></details></td>
+    </tr>`).join('');
+  el.innerHTML = header + `
+    <table>
+      <thead><tr><th>심각도</th><th>상태</th><th>ID</th><th>점검 항목</th><th>상세</th><th>권장 조치</th><th>증적</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+async function loadScanDetail(scanId) {
+  if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+  try {
+    const scan = await fetch(`/api/diagnosis/scans/${scanId}`).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+    renderScanDetail(scan);
+    loadScans();
+    if (scan.status === 'pending' || scan.status === 'running') {
+      pollTimer = setTimeout(() => loadScanDetail(scanId), 2000);
+    }
+  } catch (err) {
+    document.getElementById('scan-detail').innerHTML = `<p class="muted">불러오기 실패 (${err.message})</p>`;
+  }
+}
+
+function pollScan(scanId) {
+  loadScanDetail(scanId);
+}
+
+loadRulesets();
+loadTargets();
+loadScans();
+</script>
+{% endblock %}
